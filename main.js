@@ -10,7 +10,6 @@ async function processFile(path){
             throw "file not found"
 
         const content = await fs.readFileSync( path ).toString();
-        console.log(content);
 
         if (!content) throw "no content";
 
@@ -32,30 +31,61 @@ async function processFile(path){
             if (tagName ) tagName = tagName[1];
             else tagName = undefined;
 
-            tags.push({
+            const element = {
                 tag,
-                tagName: tagName ? tagName[1] : '',
-                pos: found.index,
+                tagName,
+                start: content.indexOf(tag, found.index) + tag.length ,
                 attributes,
-            });
+            };
+            tags.push(element);
             regex.lastIndex = found.index+1;
 
-            if (tag[0] === '<' && tag[1] === '/'){
-                if (stack[stack.length-1] !== tagName) throw "invalid closing tags";
-                stack.splice( stack.length-1, 1);
-            }else
-            if (tag[0]==='<' && tag[1]!=='/' && tag.indexOf("/>") !== tag.length-2)
-                stack.push(tagName);
+            if (attributes.style){
 
+                const regexInlineCSS = /([\w-]+)\s*:\s*([^;]+)\s*;?/g;
+                const styles = {};
+
+                let matchStyle;
+                while (matchStyle = regexInlineCSS.exec(attributes.style) )
+                    styles[matchStyle[1]] = matchStyle[2];
+
+                element.styles = styles;
+
+            }
+
+            if (tag[0] === '<' && tag[1] === '/'){
+                if (stack[stack.length-1].tagName !== tagName) throw "invalid closing tags";
+                stack[stack.length-1].end = found.index;
+
+                const innerHTML = content.substr( stack[stack.length-1].start, found.index - stack[stack.length-1].start );
+                stack[stack.length-1].innerHTML = innerHTML;
+
+                stack.splice( stack.length-1, 1);
+                element.isEnd = true;
+
+            }else
+            if (tag[0]==='<' && tag[1]!=='/' && tag.indexOf("/>") !== tag.length-2) {
+                stack.push(element);
+            }
+
+        }
+
+        for (const tag of tags){
+
+            if (tag.isEnd) continue;
+
+            if ( ["p", "h1", "h2", "h3"].indexOf( tag.tagName ) >= 0 ) {
+                console.log(tag.innerHTML);
+            }
+
+            if (tag.tagName === "br")
+                console.log("\n\n");
 
 
         }
 
-        console.log(tags);
-
     } catch(err) {
         console.error(err);
-        return;
     }
 
 }
