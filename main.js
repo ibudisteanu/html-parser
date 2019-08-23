@@ -1,20 +1,6 @@
 console.log("starting");
 const fs = require('fs');
-const termCss = require('term-css')
-
-/**
- *
- * Term-CSS only supports
- *
- * text-decoration: <underline|inverse>
-   font-weight: <bold>
-   font-style: <italic>
-   color: <grey|gray|black|blue|cyan|green|red|magenta|yellow>
-   background: <grey|gray|black|blue|cyan|green|red|magenta|yellow>
- *
- * @param path
- * @returns {Promise<void>}
- */
+const colors = require('colors/safe');
 
 async function processFile(path){
 
@@ -100,16 +86,68 @@ async function processFile(path){
 
 }
 
-function convertStyleToCSS(styles){
+const capitalize = (s) => {
+    if (typeof s !== 'string') return '';
+    return s.charAt(0).toUpperCase() + s.slice(1)
+}
 
-    let css = 'element { ';
-    for (const style in styles) {
-        css += `${style}:${styles[style]}`;
-        if (css[css.length-1] !== ';') css += ';';
-    }
-    css += "}";
+function getTextStyle(text, style){
 
-    return css;
+    const available = {
+
+        color: {
+            available: ['black','red','green','yellow','blue','magenta','cyan','white','gray','grey', 'rainbow', 'zebra','america',' trap', 'random', 'inverse'],
+        },
+
+        background: {
+            available: ['black','red','green','yellow','blue','magenta','cyan','white'],
+            callback: value => 'bg'+capitalize(value),
+        },
+
+        "font-weight":{
+            available: ['bold'],
+        },
+
+        "font-style":{
+            available: ['italic'],
+        },
+
+        "text-decoration":{
+            available: ['underline', 'line-through'],
+            callback: value => value === 'line-through' ?  'strikethrough' : value,
+        },
+
+        visibility: {
+            available: ['visible', 'hidden'],
+            callback: value => value === 'visible' ? '' : value,
+        },
+
+    };
+
+    for (const key in available)
+        if (style[key] ){
+
+            let value = style[key];
+
+            if (value[value.length-1] === ';') value = value.substr(0, value.length-1);
+
+            if ( available[key].available.indexOf(value) < 0 ) {
+                console.warn(`Invalid value ${value} for ${key}`);
+                continue;
+            }
+
+            const callback = available[key].callback || (a => a);
+            const property = callback( value);
+
+            if (property)
+                if (!colors[property]) console.warn(`Invalid value ${property} for ${key}`);
+                else  text = colors[ property ](text);
+
+
+        }
+
+    return text;
+
 }
 
 async function processDOM(tags, stylesParent={}){
@@ -125,13 +163,14 @@ async function processDOM(tags, stylesParent={}){
             if (!tag.styles[key])
                 tag.styles[key] = stylesParent[key];
 
-        if ( ["h1","h2","h3"].indexOf(tag.tagName) >= 0)
+        if ( ["h1","h2","h3"].indexOf(tag.tagName) >= 0) {
             tag.styles["font-weight"] = "bold;";
+            tag.styles["text-decoration"] = "underline;";
+        }
 
-        if ( ["p", "h1", "h2", "h3"].indexOf( tag.tagName ) >= 0 ) {
+        if ( ["p", "h1", "h2", "h3", 'h4', 'span'].indexOf( tag.tagName ) >= 0 ) {
 
-            const cssCompiled = termCss.compile('  {element} ', convertStyleToCSS(tag.styles) );
-            console.log(cssCompiled( {element: tag.innerHTML} ));
+            console.log(getTextStyle( tag.innerHTML, tag.styles ));
 
         }
 
@@ -140,11 +179,12 @@ async function processDOM(tags, stylesParent={}){
             console.log("+---------------------------------------+");
             const titles = [];
             for (const child of tag.children)
-                titles.push(child.innerHTML);
+                titles.push(child);
+
 
             let s = '| ';
             for (let i=0; i < titles.length; i++)
-                s += titles[i] + ' | ';
+                s += getTextStyle( titles[i].innerHTML, titles[i].styles)  + ' | ';
 
             console.log(s);
 
@@ -178,7 +218,7 @@ async function processPage(filename){
 
     const tags = await processFile(filename);
 
-    await processDOM(tags, {} );
+    return processDOM(tags, {} );
 
 }
 processPage(process.argv[2] );
