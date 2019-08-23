@@ -62,10 +62,12 @@ async function processFile(path){
                 start: content.indexOf(tag, found.index) + tag.length ,
                 attributes,
                 styles,
+                children: [],
             };
-            tags.push(element);
             regex.lastIndex = found.index+1;
 
+            if (stack.length === 0)
+                tags.push(element);
 
 
             if (tag[0] === '<' && tag[1] === '/'){
@@ -80,36 +82,17 @@ async function processFile(path){
 
             }else
             if (tag[0]==='<' && tag[1]!=='/' && tag.indexOf("/>") !== tag.length-2) {
+
+                if (stack.length)
+                    stack[stack.length-1].children.push( element );
+
                 stack.push(element);
+
             }
 
         }
 
-        for (const tag of tags){
-
-            if (tag.isEnd) continue;
-
-            if ( ["h1","h2","h3"].indexOf(tag.tagName) >= 0)
-                tag.styles["font-weight"] = "bold;";
-
-            let css = 'element { ';
-            for (const style in tag.styles) {
-                css += `${style}:${tag.styles[style]}`;
-                if (css[css.length-1] !== ';') css += ';';
-            }
-            css += "}";
-
-            if ( ["p", "h1", "h2", "h3"].indexOf( tag.tagName ) >= 0 ) {
-
-                const cssCompiled = termCss.compile('  {element} ', css );
-                console.log(cssCompiled( {element: tag.innerHTML} ));
-            }
-
-            if (tag.tagName === "br")
-                console.log("\n\n");
-
-
-        }
+        return tags;
 
     } catch(err) {
         console.error(err);
@@ -117,5 +100,85 @@ async function processFile(path){
 
 }
 
+function convertStyleToCSS(styles){
 
-processFile(process.argv[2]);
+    let css = 'element { ';
+    for (const style in styles) {
+        css += `${style}:${styles[style]}`;
+        if (css[css.length-1] !== ';') css += ';';
+    }
+    css += "}";
+
+    return css;
+}
+
+async function processDOM(tags, stylesParent={}){
+
+    if (!Array.isArray(tags)) tags = [tags];
+
+    const styles = [];
+    for (const tag of tags){
+
+        if (tag.isEnd) continue;
+
+        for (const key in stylesParent)
+            if (!tag.styles[key])
+                tag.styles[key] = stylesParent[key];
+
+        if ( ["h1","h2","h3"].indexOf(tag.tagName) >= 0)
+            tag.styles["font-weight"] = "bold;";
+
+        if ( ["p", "h1", "h2", "h3"].indexOf( tag.tagName ) >= 0 ) {
+
+            const cssCompiled = termCss.compile('  {element} ', convertStyleToCSS(tag.styles) );
+            console.log(cssCompiled( {element: tag.innerHTML} ));
+
+        }
+
+        if (tag.tagName === "tr"){
+
+            console.log("+---------------------------------------+");
+            const titles = [];
+            for (const child of tag.children)
+                titles.push(child.innerHTML);
+
+            let s = '| ';
+            for (let i=0; i < titles.length; i++)
+                s += titles[i] + ' | ';
+
+            console.log(s);
+
+            console.log("+---------------------------------------+");
+
+        }
+
+        if (tag.tagName === "br")
+            console.log("\n\n");
+
+        if (tag.tagName === "table"){
+
+            const columnsStyles = ( await processDOM(tag.children[0], { } ) ) [0];
+
+            for (let i=1; i < tag.children.length; i++)
+                await processDOM(tag.children[i], columnsStyles[i])
+
+
+        } else
+            styles.push( await processDOM(tag.children, tag.styles) );
+
+
+    }
+
+    if (tags.length === 0) return stylesParent;
+    else return styles;
+
+}
+
+async function processPage(filename){
+
+    const tags = await processFile(filename);
+
+    await processDOM(tags, {} );
+
+}
+processPage(process.argv[2] );
