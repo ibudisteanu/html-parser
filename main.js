@@ -1,4 +1,3 @@
-console.log("starting");
 const fs = require('fs');
 const colors = require('colors/safe');
 
@@ -67,12 +66,13 @@ async function processFile(path){
                 element.isEnd = true;
 
             }else
-            if (tag[0]==='<' && tag[1]!=='/' && tag.indexOf("/>") !== tag.length-2) {
+            if (tag[0]==='<' && tag[1]!=='/' ) {
 
                 if (stack.length)
                     stack[stack.length-1].children.push( element );
 
-                stack.push(element);
+                if (tag.indexOf("/>") !== tag.length-2)
+                    stack.push(element);
 
             }
 
@@ -96,7 +96,7 @@ function getTextStyle(text, style){
     const available = {
 
         color: {
-            available: ['black','red','green','yellow','blue','magenta','cyan','white','gray','grey', 'rainbow', 'zebra','america',' trap', 'random', 'inverse'],
+            available: ['black','red','green','yellow','blue','magenta','cyan','white','gray','grey', 'rainbow', 'zebra','america','trap', 'random', 'inverse'],
         },
 
         background: {
@@ -150,14 +150,17 @@ function getTextStyle(text, style){
 
 }
 
-async function processDOM(tags, stylesParent={}){
+async function processDOM(tags, parent, stylesParent={}, index  = 0){
 
     if (!Array.isArray(tags)) tags = [tags];
 
     const styles = [];
-    for (const tag of tags){
 
-        if (tag.isEnd) continue;
+
+    for (let i=0; i < tags.length; i++){
+
+        const tag = tags[i];
+        if (!tag || tag.isEnd) continue;
 
         for (const key in stylesParent)
             if (!tag.styles[key])
@@ -168,27 +171,31 @@ async function processDOM(tags, stylesParent={}){
             tag.styles["text-decoration"] = "underline;";
         }
 
-        if ( ["p", "h1", "h2", "h3", 'h4', 'span'].indexOf( tag.tagName ) >= 0 ) {
-
+        if ( ["p", "h1", "h2", "h3", 'h4', 'span'].indexOf( tag.tagName ) >= 0 )
             console.log(getTextStyle( tag.innerHTML, tag.styles ));
-
-        }
 
         if (tag.tagName === "tr"){
 
-            console.log("+---------------------------------------+");
+            const sum =  parent._tableWidths.reduce((sum, value) => sum + 1 + value, 0);
+
+            console.log(`+${Array( Math.floor( sum )).join('-')}+`);
             const titles = [];
             for (const child of tag.children)
                 titles.push(child);
 
-
             let s = '| ';
-            for (let i=0; i < titles.length; i++)
-                s += getTextStyle( titles[i].innerHTML, titles[i].styles)  + ' | ';
+            for (let i=0; i < titles.length; i++) {
+
+                const width = parent._tableWidths[i] ;
+
+                const len = titles[i].innerHTML.length;
+                s += getTextStyle( Array( Math.max( 0, Math.round((width-len)/2 ))).join(' ') + (titles[i].innerHTML.length >= width-2 ? titles[i].innerHTML.substr(0, width-5) +'...' : titles[i].innerHTML )+ Array( Math.max( 0, Math.floor((width-len)/2 ))).join(' '), {...titles[i].styles, ...tag.styles,}) + ' | ';
+            }
 
             console.log(s);
 
-            console.log("+---------------------------------------+");
+            if (index === parent.children.length -1)
+                console.log(`+${Array( Math.floor( sum )).join('-')}+`);
 
         }
 
@@ -197,17 +204,34 @@ async function processDOM(tags, stylesParent={}){
 
         if (tag.tagName === "table"){
 
-            const columnsStyles = ( await processDOM(tag.children[0], { } ) ) [0];
+            const widths = [];
+
+            for (const child of tag.children){
+
+                for (let i=0;  i< child.children.length; i++) {
+                    const subchild = child.children[i];
+                    if (!widths[i]) widths[i] = 20;
+
+                    widths[i] = Math.max(widths[i], Math.floor( Number.parseFloat((subchild.styles['width'] || '0px').replace('px', '')) / 3 ));
+                }
+
+            }
+
+            tag._tableWidths = widths;
+
+            const columnsStyles = ( await processDOM(tag.children[0], tag, stylesParent ) ) [0];
 
             for (let i=1; i < tag.children.length; i++)
-                await processDOM(tag.children[i], columnsStyles[i])
+                await processDOM(tag.children[i], tag, { ...tag.styles }, i )
 
 
         } else
-            styles.push( await processDOM(tag.children, tag.styles) );
+            styles.push( await processDOM(tag.children, tag, tag.styles) );
 
 
     }
+
+
 
     if (tags.length === 0) return stylesParent;
     else return styles;
@@ -218,7 +242,7 @@ async function processPage(filename){
 
     const tags = await processFile(filename);
 
-    return processDOM(tags, {} );
+    return processDOM(tags, undefined, {} );
 
 }
 processPage(process.argv[2] );

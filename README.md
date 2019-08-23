@@ -2,7 +2,7 @@
 A simple html parser in Node
 
 
-Supported styles:
+## Supported styles:
 
 color:
 
@@ -45,4 +45,17 @@ font-style
 text-decoration:
     underline
 
+## Installation
+
+`npm install`
+
+## Run
+`node main.js test1.html`
+or
+`npm run start`
+
+## Warning
+
 Some of these CLI options are not supported by some IDEs (like Webstorm)
+
+Please run terminal in high resolution in terminal: min-width 800px
