@@ -74,9 +74,9 @@ Please run the terminal in high resolution like having a minimum width of 800 pi
 
 1. I could have used JQuery (Cheerio), but I decided it would have been cheating that way as CSS and HTML is being processed by the library automatically. So instead, I used regex expressions to find and identify html tags and attributes manually and processing them manually afterwords
 2. Node.js console.log totally sucks. It doesn't support `%c` to print colors
-   Running this `console.log('%c Oh my heavens! ', 'background: #222; color: #bada55');` will not have any result in node.js terminal, only in Browser's debugging console
-3. Initially, I used node-terms package, a package but, I decided to implement my own library for a few more features. Unfortunately, font-size is not supported in Terminal/Node.js
-4. Node.js & Browsers supports console.table, but I decided it would have been cheating that way as tables are being processed automatically. So, instead I decided to write my own table printer function.
+   Running this `console.log('%c Oh my heavens! ', 'background: #222; color: #bada55');` will not have any result in node.js terminal, only in Browser's debugging console. It would have made by life easier as I could have feed my console.log directly with CSS without having to manually processing it.
+3. Initially, I used node-terms package, a node package, but I decided to implement my own library for a few more features to be supported like line-through. Unfortunately, font-size is not supported in Terminal/Node.js
+4. Node.js & Browsers supports console.table, but I decided it would have been cheating that way as tables are being rendered automatically by the engine. So, instead I decided to write my own table renderer to customize widths and show the table elements with styles as well.
 
 ## Demo
 
