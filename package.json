@@ -1,0 +1,9 @@
+{
+  "name": "html-parser",
+  "scripts": {
+    "start": "node main.js"
+  },
+  "dependencies": {
+    "colors": "^1.3.3"
+  }
+}

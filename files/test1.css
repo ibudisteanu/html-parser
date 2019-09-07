@@ -1,0 +1,50 @@
+h1{
+    background: white;
+    color: blue;
+}
+
+#linethrough{
+    text-decoration: line-through;
+}
+
+.red {
+    color: red;
+}
+
+.yellow {
+    color: yellow;
+}
+
+
+.redBackground {
+    background: red;
+}
+
+.yellowBackground  {
+    background: yellow;
+}
+
+.width200 {
+    width: 200px;
+}
+
+.width150 {
+    width: 150px;
+}
+
+.width100 {
+    width: 100px;
+}
+
+
+.foo    >  .bar1  > .bar2 {
+    color: xxx;
+}
+
+.foo    >  .bar1  > .bar2 {
+    color: zebra;
+}
+
+.foo  > .bar1 :nth-child(3){
+
+}
